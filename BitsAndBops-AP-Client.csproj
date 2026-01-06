@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <RootNamespace>BitsAndBops_AP_Client</RootNamespace>
+        <Nullable>enable</Nullable>
+        <EnvFileContent Condition="Exists('$(MSBuildProjectDirectory)\.env')">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\.env'))</EnvFileContent>
+        <STEAM_PATH>$([System.Text.RegularExpressions.Regex]::Match($(EnvFileContent), `(?m)^STEAM_PATH\s*=\s*["']?([^"'\r\n]+)["']?`).Groups[1].Value)</STEAM_PATH>
+        <STEAM_PATH Condition="'$(STEAM_PATH)' == ''">C:\Program Files (x86)\Steam</STEAM_PATH>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Archipelago.MultiClient.Net" Version="6.7.0"/>
+        <PackageReference Include="BepInEx.Core" Version="5.4.21"/>
+        <PackageReference Include="Krafs.Publicizer" Version="2.3.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="Assembly-CSharp">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\Assembly-CSharp.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+        </Reference>
+        <Reference Include="TempoStudio.Core">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\TempoStudio.Core.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.AnimationModule">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
+        </Reference>
+        <Reference Include="Unity.TextMeshPro">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.InputLegacyModule">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.TextRenderingModule">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+        </Reference>
+        <Reference Include="UnityEngine.UI">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.UI.dll</HintPath>
+        </Reference>
+        <Publicize Include="Assembly-CSharp"/>
+        <Reference Include="UnityEngine.UIModule">
+            <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+        <Copy
+                SourceFiles="$(TargetPath)"
+                DestinationFiles="$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\BepInEx\plugins\BitsAndBopsAPClient\$(TargetFileName)"/>
+    </Target>
+</Project>
