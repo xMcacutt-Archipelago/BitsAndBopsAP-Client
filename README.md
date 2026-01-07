@@ -1,16 +1,17 @@
 ﻿# Bits & Bops Archipelago
 
 ## Install Guide
-1. Download [BepinEx](https://github.com/BepInEx/BepInEx/releases) 5.4 for x64 architecture
-2. Extract all files into your Bits & Bops directory
-3. Launch the game
-4. Close the game
-5. Download the [latest release of this mod](https://github.com/xMcacutt-Archipelago/BitsAndBopsAP-Client/releases)
-6. Extract the BitsAndBopsAPClient folder into the bepinex/plugins folder in your game folder
-7. Launch the game
-8. Bop
-9. Miss a beat
-10. Cry
+1. Opt into the beta branch on steam
+2. Download [BepinEx](https://github.com/BepInEx/BepInEx/releases) 5.4 for x64 architecture
+3. Extract all files into your Bits & Bops directory
+4. Launch the game
+5. Close the game
+6. Download the [latest release of this mod](https://github.com/xMcacutt-Archipelago/BitsAndBopsAP-Client/releases)
+7. Extract the BitsAndBopsAPClient folder into the bepinex/plugins folder in your game folder
+8. Launch the game
+9. Bop
+10. Miss a beat
+11. Cry
 
 ## Implementation Details
 
@@ -25,5 +26,8 @@ Completing the badge achievements will also send checks when badgesanity is enab
 To play the records at different speeds, you must have the record for the level. 
 Then go to the record player and select the record for the level you want to play.
 Setting the speed of the record on the record player and then selecting the level will play the level at that speed.
+
+Deathlink is implemented. Receiving a death immediately quits the current level. 
+Missing a beat has a 5% chance to send a death.
 
 The apworld can be found [here](https://github.com/xMcacutt-Archipelago/Archipelago-Bits-and-Bops/releases/latest)
