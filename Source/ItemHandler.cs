@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Archipelago.MultiClient.Net.Models;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -53,6 +54,7 @@ namespace BitsAndBops_AP_Client
         GlobeTrottersRecord = 0x2B,
         FireMixtapeRecord = 0x2C,
         RandomSouvenir = 0x100,
+        RandomVideotape = 0x101,
     }
 
     public class ItemHandler : MonoBehaviour
@@ -265,6 +267,24 @@ namespace BitsAndBops_AP_Client
                     GameManager.TryEnableEvent(RecordUnlock.Mixtape4, GameManager.RecordUnlockEvents);
                     break;
                 case BaBItem.RandomSouvenir:
+                    var trinkets = Enum.GetValues(typeof(TrinketUnlock)).Cast<TrinketUnlock>().ToList();
+                    var available = trinkets.Where(x =>
+                        !GameManager.TrinketUnlockEvents.TryGetValue(x, out var trinket) ||
+                        trinket == EventState.Unavailable);
+                    var trinketUnlocks = available as TrinketUnlock[] ?? available.ToArray();
+                    if (!trinketUnlocks.Any())
+                        break;
+                    GameManager.TryEnableEvent(trinketUnlocks.OrderBy(x => PluginMain.random.Next()).First(), GameManager.TrinketUnlockEvents);
+                    break;
+                case BaBItem.RandomVideotape:                   
+                    var tapes = Enum.GetValues(typeof(VideoUnlock)).Cast<VideoUnlock>().ToList();
+                    var availableTapes = tapes.Where(x =>
+                        !GameManager.VideoUnlockEvents.TryGetValue(x, out var trinket) ||
+                        trinket == EventState.Unavailable);
+                    var tapeUnlocks = availableTapes as VideoUnlock[] ?? availableTapes.ToArray();
+                    if (!tapeUnlocks.Any())
+                        break;
+                    GameManager.TryEnableEvent(tapeUnlocks.OrderBy(x => PluginMain.random.Next()).First(), GameManager.VideoUnlockEvents);
                     break;
                 default:
                     Log.Warning($"Unknown item: {item.ItemId} ({item.ItemName})");

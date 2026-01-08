@@ -27,35 +27,34 @@ namespace BitsAndBops_AP_Client
             pause.quitter.PreventQuit = false;
             pause.quitter.Quit(audioDuration: 0.25f, quitScene: quitScene);
         }
-
-        [HarmonyPatch(typeof(Judge))]
-        public static class Judge_Patch
+        
+        [HarmonyPatch(typeof(JudgementDictionary))]
+        public static class JudgementDictionary_Patch
         {
             private static Random random = new Random();
+            public static double deathChance = 0;
+            public static bool troublemakerFlag = true;
             
-            [HarmonyPatch(nameof(Judge.HandleMisses))]
-            [HarmonyPrefix]
-            [HarmonyPatch([typeof(BeatQueue), typeof(double), typeof(Judgement), typeof(Action), typeof(Judge.OnMiss)])]
-            public static bool HandleMisses(
-                Judge __instance,
-                BeatQueue queue,
-                double currentSecond,
-                Judgement judgement,
-                Action action,
-                Judge.OnMiss onMiss)
+            [HarmonyPatch(nameof(JudgementDictionary.IncrementAtomic))]
+            [HarmonyPostfix]
+            [HarmonyPatch([typeof(Judgement), typeof(string), typeof(Action), typeof(float)])]
+            public static void IncrementAtomic(Judgement judgement, string type, Action action, float target)
             {
-                IJukeboxTimeless jukebox = __instance.jukebox.Timeless;
-                float window = __instance.GetWindow(judgement);
-                float beat1;
-                while (queue.DequeueIf((BeatQueue.Condition) (beat => jukebox.GetDelta(beat, currentSecond) > (double) window), out beat1))
+                if (judgement is Judgement.Perfect or Judgement.Hit)
+                    troublemakerFlag = false;
+                if (troublemakerFlag)
+                    return;
+                if (judgement == Judgement.Miss)
                 {
-                    __instance.implicitJudgements.IncrementAtomic(Judgement.Miss, "implicit", action, beat1);
                     var rng = random.NextDouble();
-                    if (rng < 0.05)
+                    if (rng < deathChance)
+                    {
                         PluginMain.ArchipelagoHandler.SendDeath();
-                    onMiss(beat1);
+                        deathChance = 0;
+                    }
+                    else
+                        deathChance += 0.01d;
                 }
-                return false;
             }
         }
 
@@ -309,7 +308,7 @@ namespace BitsAndBops_AP_Client
                 return;
             }
             
-            if (GameManager.UnlockEvents[Stage.Mixtape5] != EventState.Complete)
+            if (!GameManager.UnlockEvents.TryGetValue(Stage.Mixtape5, out var mix5) || mix5 != EventState.Complete)
             {
                 GameManager.UnlockEvents[Stage.Mixtape5] = EventState.Available;
                 APConsole.Instance.Log("The Final Mixtape is Available...");
