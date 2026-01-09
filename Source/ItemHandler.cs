@@ -268,9 +268,9 @@ namespace BitsAndBops_AP_Client
                     break;
                 case BaBItem.RandomSouvenir:
                     var trinkets = Enum.GetValues(typeof(TrinketUnlock)).Cast<TrinketUnlock>().ToList();
-                    var available = trinkets.Where(x =>
-                        !GameManager.TrinketUnlockEvents.TryGetValue(x, out var trinket) ||
-                        trinket == EventState.Unavailable);
+                    var available = trinkets.Where(x => x != TrinketUnlock.Invalid &&
+                        (!GameManager.TrinketUnlockEvents.TryGetValue(x, out var trinket) ||
+                        trinket == EventState.Unavailable));
                     var trinketUnlocks = available as TrinketUnlock[] ?? available.ToArray();
                     if (!trinketUnlocks.Any())
                         break;
@@ -278,9 +278,9 @@ namespace BitsAndBops_AP_Client
                     break;
                 case BaBItem.RandomVideotape:                   
                     var tapes = Enum.GetValues(typeof(VideoUnlock)).Cast<VideoUnlock>().ToList();
-                    var availableTapes = tapes.Where(x =>
-                        !GameManager.VideoUnlockEvents.TryGetValue(x, out var trinket) ||
-                        trinket == EventState.Unavailable);
+                    var availableTapes = tapes.Where(x => x != VideoUnlock.Invalid &&
+                        (!GameManager.VideoUnlockEvents.TryGetValue(x, out var tape) ||
+                        tape == EventState.Unavailable));
                     var tapeUnlocks = availableTapes as VideoUnlock[] ?? availableTapes.ToArray();
                     if (!tapeUnlocks.Any())
                         break;
