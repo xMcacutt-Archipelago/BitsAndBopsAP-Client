@@ -1,21 +1,24 @@
 ﻿using System;
+using System.Threading;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Random = System.Random;
+using BepInEx.Configuration;
 
 namespace BitsAndBops_AP_Client
 {
     [BepInPlugin(Guid, Name, Version)]
     public class PluginMain : BaseUnityPlugin
     {
+        public static ConfigEntry<bool> enableDebugLogging;
         public const string GameName = "Bits & Bops";
         private const string Guid = "bits_and_bops_ap_client";
         private const string Name = "BitsAndBopsAPClient";
-        private const string Version = "1.0.1";
-        public static  ManualLogSource logger;
+        private const string Version = "1.0.3";
+        public static ManualLogSource logger;
         private readonly Harmony _harmony = new(Guid);
         public static ArchipelagoHandler ArchipelagoHandler;
         public static SaveDataHandler SaveDataHandler;
@@ -24,7 +27,7 @@ namespace BitsAndBops_AP_Client
         public static SlotData SlotData;
         public static Random random;
         
-        void Awake()
+        private void Awake()
         {
             random = new Random();
             _harmony.PatchAll();
@@ -42,6 +45,15 @@ namespace BitsAndBops_AP_Client
                 GameHandler.JudgementDictionary_Patch.deathChance = 0;
                 GameHandler.JudgementDictionary_Patch.troublemakerFlag = true;
             };
+            
+            enableDebugLogging = Config.Bind(
+                "Logging",
+                "EnableDebugLogging",
+                false,
+                "Enables or disables debug logging in the Archipelago Console."
+            );
         }
+
+    
     }
 }

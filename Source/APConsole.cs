@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -70,11 +71,11 @@ public class APConsole : MonoBehaviour
     // COLLECTIONS
     private static TMP_FontAsset _font;
 
-    private readonly Queue<Image> _backgroundPool = new();
+    private readonly ConcurrentQueue<Image> _backgroundPool = new();
 
-    private readonly Queue<LogEntry> _cachedEntries = new();
+    private readonly ConcurrentQueue<LogEntry> _cachedEntries = new();
 
-    private readonly Queue<TextMeshProUGUI> _textPool = new();
+    private readonly ConcurrentQueue<TextMeshProUGUI> _textPool = new();
     private readonly List<LogEntry> _visibleEntries = [];
     private readonly List<LogEntry> _historyEntries = [];
     private GameObject _historyPanel;
@@ -232,7 +233,7 @@ public class APConsole : MonoBehaviour
         if (_visibleEntries.Count >= maxMessages)
             return;
 
-        var entry = _cachedEntries.Dequeue();
+        _cachedEntries.TryDequeue(out var entry);
         entry.state = LogEntry.State.SlideIn;
         entry.stateTimer = 0f;
 
@@ -335,7 +336,7 @@ public class APConsole : MonoBehaviour
     {
         if (_textPool.Count > 0)
         {
-            var t = _textPool.Dequeue();
+            _textPool.TryDequeue(out var t);
             t.gameObject.SetActive(true);
             return t;
         }
@@ -354,7 +355,7 @@ public class APConsole : MonoBehaviour
     {
         if (_backgroundPool.Count > 0)
         {
-            var img = _backgroundPool.Dequeue();
+            _backgroundPool.TryDequeue(out var img);
             img.gameObject.SetActive(true);
             return img;
         }
@@ -481,7 +482,7 @@ public class APConsole : MonoBehaviour
 
     public void DebugLog(string text)
     {
-        if (!_isDebug)
+        if (!PluginMain.enableDebugLogging.Value)
             return;
         Log(text);
     }

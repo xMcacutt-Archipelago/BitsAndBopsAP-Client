@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using CollectionExtensions = System.Collections.Generic.CollectionExtensions;
 using Random = System.Random;
 
@@ -16,12 +17,17 @@ namespace BitsAndBops_AP_Client
     {
         public void Kill()
         {
-            var pause = PauseScript.Instance;
-            if (pause == null || !pause.isGame)
+            PauseScript? pause = null;
+            var pauseScene = SceneManager.GetSceneByName(SceneKey.Pause.ToString());
+            if (!pauseScene.isLoaded)
             {
-                APConsole.Instance.DebugLog("Pause is null probably");
+                APConsole.Instance.DebugLog("Scene not found: " + nameof(SceneKey.Pause));
                 return;
             }
+            foreach (var root in pauseScene.GetRootGameObjects())
+                pause = root.GetComponentInChildren<PauseScript>();
+            if (pause == null || !pause.isGame)
+                return;
             var quitScene = new SceneKey?(SceneKey.StageSelect);
             pause.unpauseSound.Play();
             pause.quitter.PreventQuit = false;
@@ -268,39 +274,39 @@ namespace BitsAndBops_AP_Client
             }
         }
 
-        public static void CheckGoal()
+        public static void CheckGoal(int speedLevel = -1)
         {
             var shouldEnable = true;
-            var highScores16 =  SaveDataManager.saveData.highScores16;
-            var highScores = SaveDataManager.saveData.highScores;
-            var highScores45 = SaveDataManager.saveData.highScores45;
-            var highScores78 =  SaveDataManager.saveData.highScores78;
+            var highScores16 = PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x101, 0x14E, 0x4);
+            if (speedLevel == 1)
+                highScores16++;
+            var highScores = PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x100, 0x14D, 0x4);
+            if (speedLevel == 0)
+                highScores++;
+            var highScores45 = PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x102, 0x14F, 0x4);
+            if (speedLevel == 2)
+                highScores45++;
+            var highScores78 =  PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x103, 0x150, 0x4);
+            if (speedLevel == 3)
+                highScores78++;
             var log = "Goal Requirements: ";
-            if (highScores16 == null || PluginMain.SlotData.Required16RPMCompletions > highScores16.Count)
-            {
+            if (PluginMain.SlotData.Required16RPMCompletions > highScores16)
                 shouldEnable = false;
-            }
-            if (highScores == null || PluginMain.SlotData.RequiredLevelCompletions > highScores.Count)
-            {
+            if (PluginMain.SlotData.RequiredLevelCompletions > highScores)
                 shouldEnable = false;
-            }
-            if (highScores45 == null || PluginMain.SlotData.Required45RPMCompletions > highScores45.Count)
-            {
+            if (PluginMain.SlotData.Required45RPMCompletions > highScores45)
                 shouldEnable = false;
-            }
-            if (highScores78 == null || PluginMain.SlotData.Required78RPMCompletions > highScores78.Count)
-            {
+            if (PluginMain.SlotData.Required78RPMCompletions > highScores78)
                 shouldEnable = false;
-            }
             
             if (PluginMain.SlotData.Required16RPMCompletions > 0)
-                log += $"   {Math.Min(highScores16?.Count ?? 0, PluginMain.SlotData.Required16RPMCompletions)}/{PluginMain.SlotData.Required16RPMCompletions} 16RPM   ";
+                log += $"  {Math.Min(highScores16, PluginMain.SlotData.Required16RPMCompletions)}/{PluginMain.SlotData.Required16RPMCompletions} 16RPM  ";
             if (PluginMain.SlotData.RequiredLevelCompletions > 0)
-                log += $"   {Math.Min(highScores?.Count ?? 0, PluginMain.SlotData.RequiredLevelCompletions)}/{PluginMain.SlotData.RequiredLevelCompletions} 33RPM   ";
+                log += $"  {Math.Min(highScores, PluginMain.SlotData.RequiredLevelCompletions)}/{PluginMain.SlotData.RequiredLevelCompletions} 33RPM  ";
             if (PluginMain.SlotData.Required45RPMCompletions > 0)
-                log += $"   {Math.Min(highScores45?.Count ?? 0, PluginMain.SlotData.Required45RPMCompletions)}/{PluginMain.SlotData.Required45RPMCompletions} 45RPM   ";
+                log += $"  {Math.Min(highScores45, PluginMain.SlotData.Required45RPMCompletions)}/{PluginMain.SlotData.Required45RPMCompletions} 45RPM  ";
             if (PluginMain.SlotData.Required78RPMCompletions > 0)
-                log += $"   {Math.Min(highScores78?.Count ?? 0, PluginMain.SlotData.Required78RPMCompletions)}/{PluginMain.SlotData.Required78RPMCompletions} 78RPM";
+                log += $"  {Math.Min(highScores78, PluginMain.SlotData.Required78RPMCompletions)}/{PluginMain.SlotData.Required78RPMCompletions} 78RPM";
             
             if (!shouldEnable)
             {
@@ -465,7 +471,7 @@ namespace BitsAndBops_AP_Client
                 var speedLevel = Data.SpeedToId[RecordPlayerScript.GlobalSpeed];
                 var locId = Data.StageToId[instance.stage];
                 PluginMain.ArchipelagoHandler.CheckLocation(0x100 + locId * 4 + speedLevel);
-                CheckGoal();
+                CheckGoal(speedLevel);
             }
         }
         

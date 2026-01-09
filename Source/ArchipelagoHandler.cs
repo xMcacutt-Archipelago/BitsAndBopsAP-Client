@@ -230,9 +230,12 @@ namespace BitsAndBops_AP_Client
 
         public int CountLocationsCheckedInRange(long start, long end)
         {
-            var startId = start;
-            var endId = end;
-            return Session.Locations.AllLocationsChecked.Count(loc => loc >= startId && loc < endId);
+            return Session.Locations.AllLocationsChecked.Count(loc => loc >= start && loc < end);
+        }
+
+        public int CountLocationsCheckedInRange(long start, long end, long delta)
+        {
+            return Session.Locations.AllLocationsChecked.Count(loc => loc >= start && loc < end && loc % delta == start % delta);
         }
         
         public void UpdateTags(List<string> tags)

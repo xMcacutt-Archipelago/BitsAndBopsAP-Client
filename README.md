@@ -6,12 +6,14 @@
 3. Extract all files into your Bits & Bops directory
 4. Launch the game
 5. Close the game
-6. Download the [latest release of this mod](https://github.com/xMcacutt-Archipelago/BitsAndBopsAP-Client/releases)
-7. Extract the BitsAndBopsAPClient folder into the bepinex/plugins folder in your game folder
-8. Launch the game
-9. Bop
-10. Miss a beat
-11. Cry
+6. Go to BepinEx/config and open BepinEx.cfg in a text editor
+7. Change HideManagerGameObject to true
+8. Download the [latest release of this mod](https://github.com/xMcacutt-Archipelago/BitsAndBopsAP-Client/releases)
+9. Extract the BitsAndBopsAPClient folder into the bepinex/plugins folder in your game folder
+10. Launch the game
+11. Bop 
+12. Miss a beat 
+13. Cry
 
 ## Implementation Details
 
