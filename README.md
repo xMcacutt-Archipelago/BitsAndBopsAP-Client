@@ -1,19 +1,18 @@
 ﻿# Bits & Bops Archipelago
 
 ## Install Guide
-1. Opt into the beta branch on steam
-2. Download [BepinEx](https://github.com/BepInEx/BepInEx/releases) 5.4 for x64 architecture
-3. Extract all files into your Bits & Bops directory
-4. Launch the game
-5. Close the game
-6. Go to BepinEx/config and open BepinEx.cfg in a text editor
-7. Change HideManagerGameObject to true
-8. Download the [latest release of this mod](https://github.com/xMcacutt-Archipelago/BitsAndBopsAP-Client/releases)
-9. Extract the BitsAndBopsAPClient folder into the bepinex/plugins folder in your game folder
-10. Launch the game
-11. Bop 
-12. Miss a beat 
-13. Cry
+1. Download [BepinEx](https://github.com/BepInEx/BepInEx/releases) 5.4 for x64 architecture
+2. Extract all files into your Bits & Bops directory
+3. Launch the game
+4. Close the game
+5. Go to BepinEx/config and open BepinEx.cfg in a text editor
+6. Change HideManagerGameObject to true
+7. Download the [latest release of this mod](https://github.com/xMcacutt-Archipelago/BitsAndBopsAP-Client/releases)
+8. Extract the BitsAndBopsAPClient folder into the bepinex/plugins folder in your game folder
+9. Launch the game
+10. Bop 
+11. Miss a beat 
+12. Cry
 
 ## Implementation Details
 
