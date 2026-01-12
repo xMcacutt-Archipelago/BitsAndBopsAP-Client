@@ -9,7 +9,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using Archipelago.MultiClient.Net.Colors;
 using Archipelago.MultiClient.Net.Converters;
 using Archipelago.MultiClient.Net.Models;
@@ -17,29 +16,29 @@ using Newtonsoft.Json.Linq;
 using UnityEngine;
 using Random = System.Random;
 
-namespace BitsAndBops_AP_Client 
+namespace BitsAndBops_AP_Client
 {
     public class ArchipelagoHandler : MonoBehaviour
     {
-        private ArchipelagoSession Session { get; set; }
-        private string Server { get; set; }
-        private int Port { get; set; }
-        private string Slot { get; set; }
-        private string Password { get; set; }
-        private string seed;
+        private ArchipelagoSession? Session { get; set; }
+        private string? Server { get; set; }
+        private string? Slot { get; set; }
+        private string? Password { get; set; }
+        private string? _seed;
         public bool IsConnected => Session?.Socket.Connected ?? false;
-        public event System.Action OnConnected;
-        public event System.Action<string> OnConnectionFailed;
-        public event System.Action OnDisconnected;
-        private ConcurrentQueue<long> locationsToCheck = new();
-        private string lastDeath;
-        private DateTime lastDeathLinkTime = DateTime.Now;
-        private readonly Random random = new();
+        public event System.Action? OnConnected;
+        public event Action<string>? OnConnectionFailed;
+        public event System.Action? OnDisconnected;
+        private ConcurrentQueue<long> _locationsToCheck = new();
+        private string? _lastDeath;
+        private DateTime _lastDeathLinkTime = DateTime.Now;
+        private readonly Random _random = new();
 
-        public volatile bool ConnectionFinished;
-        public volatile bool ConnectionSucceeded;
-        
-        private readonly string[] deathMessages =
+        public volatile bool connectionFinished;
+        public volatile bool connectionSucceeded;
+        private readonly bool _queueBreak = false;
+
+        private readonly string[] _deathMessages =
         [
             "had a skill issue (died)",
             "scratched their favorite vinyl",
@@ -60,7 +59,7 @@ namespace BitsAndBops_AP_Client
             "forgot their parachute",
             "brushed up against poison ivy"
         ];
-        
+
         private static string GetColorHex(PaletteColor? color)
         {
             return color switch
@@ -79,28 +78,27 @@ namespace BitsAndBops_AP_Client
                 _ => "#FFFFFF" // Default to white
             };
         }
-        
-        public void CreateSession(string server, int port, string slot, string password)
+
+        public void CreateSession(string server, string slot, string password)
         {
             Server = server;
-            Port = port;
             Slot = slot;
             Password = password;
-            locationsToCheck = new ConcurrentQueue<long>();
-            Session = ArchipelagoSessionFactory.CreateSession(Server, Port);
+            _locationsToCheck = new ConcurrentQueue<long>();
+            Session = ArchipelagoSessionFactory.CreateSession(Server);
             Session.MessageLog.OnMessageReceived += OnMessageReceived;
             Session.Socket.ErrorReceived += OnError;
             Session.Socket.SocketClosed += OnSocketClosed;
             Session.Socket.PacketReceived += PacketReceived;
             Session.Items.ItemReceived += ItemReceived;
         }
-        
+
         public void Connect()
         {
-            APConsole.Instance.Log($"Logging in to {Server}:{Port} as {Slot}...");
-            seed = Session.ConnectAsync()?.Result?.SeedName;
-            
-            var result = Session.LoginAsync(
+            APConsole.Instance.Log($"Logging in to {Server} as {Slot}...");
+            _seed = Session?.ConnectAsync()?.Result?.SeedName;
+
+            var result = Session?.LoginAsync(
                 PluginMain.GameName,
                 Slot,
                 ItemsHandlingFlags.AllItems,
@@ -109,30 +107,35 @@ namespace BitsAndBops_AP_Client
                 password: Password
             ).Result;
 
-            if (result.Successful)
+            if (result is { Successful: true })
             {
-                APConsole.Instance.Log($"Success! Connected to {Server}:{Port}");
+                APConsole.Instance.Log($"Success! Connected to {Server}");
                 var successResult = (LoginSuccessful)result;
                 PluginMain.SlotData = new SlotData(successResult.SlotData);
-                
-                if (seed != null)
-                    PluginMain.SaveDataHandler!.GetSave(seed, Slot);
-            
+
+                if (_seed != null && Slot != null)
+                    PluginMain.SaveDataHandler.GetSave(_seed, Slot);
+
                 PluginMain.ArchipelagoHandler.StartCoroutine(RunCheckQueue());
-                ConnectionSucceeded = true;
-                ConnectionFinished = true;
+                connectionSucceeded = true;
+                connectionFinished = true;
                 OnConnected?.Invoke();
                 return;
             }
 
-            ConnectionSucceeded = false;
-            ConnectionFinished = true;
-            var failure = (LoginFailure)result;
-            var errorMessage = $"Failed to Connect to {Server}:{Port} as {Slot}:";
-            errorMessage = failure.Errors.Aggregate(errorMessage, (current, error) => current + $"\n    {error}");
-            errorMessage = failure.ErrorCodes.Aggregate(errorMessage, (current, error) => current + $"\n    {error}");
-            OnConnectionFailed?.Invoke(errorMessage);
-            APConsole.Instance.Log(errorMessage);
+            connectionSucceeded = false;
+            connectionFinished = true;
+            if (result != null)
+            {
+                var failure = (LoginFailure)result;
+                var errorMessage = $"Failed to Connect to {Server} as {Slot}:";
+                errorMessage = failure.Errors.Aggregate(errorMessage, (current, error) => current + $"\n    {error}");
+                errorMessage =
+                    failure.ErrorCodes.Aggregate(errorMessage, (current, error) => current + $"\n    {error}");
+                OnConnectionFailed?.Invoke(errorMessage);
+                APConsole.Instance.Log(errorMessage);
+            }
+
             APConsole.Instance.Log("Attempting reconnect...");
         }
 
@@ -145,7 +148,7 @@ namespace BitsAndBops_AP_Client
             Session = null;
             APConsole.Instance.Log("Disconnected from Archipelago");
         }
-        
+
         private void OnError(Exception ex, string message)
         {
             APConsole.Instance.Log($"Socket error: {message} - {ex.Message}");
@@ -185,59 +188,66 @@ namespace BitsAndBops_AP_Client
             }
 
             APConsole.Instance.DebugLog("Resyncing items from server...");
-            var items = Session.Items.AllItemsReceived;
-            for (int i = 0; i < items.Count; i++)
-            {
-                PluginMain.ItemHandler.HandleItem(i, items[i], false);
-            }
+            var items = Session?.Items.AllItemsReceived;
+            if (items != null)
+                for (var i = 0; i < items.Count; i++)
+                    PluginMain.ItemHandler.HandleItem(i, items[i], false);
+
             PluginMain.SaveDataHandler.SaveGame();
-            APConsole.Instance.DebugLog($"Resync complete. Processed up to item {items.Count}");
+            if (items != null)
+                APConsole.Instance.DebugLog($"Resync complete. Processed up to item {items.Count}");
         }
 
         public void Release()
         {
-            Session.SetGoalAchieved();
-            Session.SetClientState(ArchipelagoClientState.ClientGoal);
+            Session?.SetGoalAchieved();
+            Session?.SetClientState(ArchipelagoClientState.ClientGoal);
         }
-        
+
         public void CheckLocations(long[] ids)
         {
-            ids.ToList().ForEach(id => locationsToCheck.Enqueue(id));
+            ids.ToList().ForEach(id => _locationsToCheck.Enqueue(id));
         }
-        
+
         public void CheckLocation(long id)
         {
-            locationsToCheck.Enqueue(id);
+            _locationsToCheck.Enqueue(id);
         }
-        
+
         private IEnumerator RunCheckQueue()
         {
             while (true)
             {
-                if (locationsToCheck.TryDequeue(out var locationId))
+                if (_locationsToCheck.TryDequeue(out var locationId))
                 {
-                    Session.Locations.CompleteLocationChecks(locationId);
+                    Session?.Locations.CompleteLocationChecks(locationId);
                     APConsole.Instance.DebugLog($"Sent location check: {locationId}");
-                } 
+                }
+
+                if (_queueBreak)
+                    yield break;
                 yield return new WaitForSeconds(0.1f);
             }
         }
-        
+
         public bool IsLocationChecked(long id)
         {
-            return Session.Locations.AllLocationsChecked.Contains(id);
+            return Session != null && Session.Locations.AllLocationsChecked.Contains(id);
         }
 
         public int CountLocationsCheckedInRange(long start, long end)
         {
-            return Session.Locations.AllLocationsChecked.Count(loc => loc >= start && loc < end);
+            return Session != null ? Session.Locations.AllLocationsChecked.Count(loc => loc >= start && loc < end) : 0;
         }
 
         public int CountLocationsCheckedInRange(long start, long end, long delta)
         {
-            return Session.Locations.AllLocationsChecked.Count(loc => loc >= start && loc < end && loc % delta == start % delta);
+            return Session != null
+                ? Session.Locations.AllLocationsChecked.Count(loc =>
+                    loc >= start && loc < end && loc % delta == start % delta)
+                : 0;
         }
-        
+
         public void UpdateTags(List<string> tags)
         {
             var packet = new ConnectUpdatePacket
@@ -245,9 +255,9 @@ namespace BitsAndBops_AP_Client
                 Tags = tags.ToArray(),
                 ItemsHandling = ItemsHandlingFlags.AllItems
             };
-            Session.Socket.SendPacket(packet);
+            Session?.Socket.SendPacket(packet);
         }
-        
+
         private void OnMessageReceived(LogMessage message)
         {
             string messageStr;
@@ -263,11 +273,13 @@ namespace BitsAndBops_AP_Client
                     string hexColor = GetColorHex(part.PaletteColor);
                     builder.Append($"<color={hexColor}>{part.Text}</color>");
                 }
+
                 messageStr = builder.ToString();
             }
+
             APConsole.Instance.Log(messageStr);
         }
-        
+
         private void PacketReceived(ArchipelagoPacketBase packet)
         {
             switch (packet)
@@ -277,52 +289,39 @@ namespace BitsAndBops_AP_Client
                     break;
             }
         }
-        
+
         public void SendDeath()
         {
             APConsole.Instance.DebugLog("SendDeath called");
             if (!PluginMain.SlotData.DeathLink)
                 return;
-            
+
             var packet = new BouncePacket();
             var now = DateTime.Now;
 
-            if (now - lastDeathLinkTime < TimeSpan.FromSeconds(2))
+            if (now - _lastDeathLinkTime < TimeSpan.FromSeconds(2))
                 return;
-            
+
             packet.Tags = ["DeathLink"];
             packet.Data = new Dictionary<string, JToken>
             {
                 { "time", now.ToUnixTimeStamp() },
                 { "source", Slot },
-                { "cause", $"{Slot} {deathMessages[random.Next(deathMessages.Length)]}" }
+                { "cause", $"{Slot} {_deathMessages[_random.Next(_deathMessages.Length)]}" }
             };
 
-            if (packet.Data.TryGetValue("source", out var sourceObj))
-            {
-                var source = sourceObj?.ToString() ?? "Unknown";
-                if (packet.Data.TryGetValue("cause", out var causeObj))
-                {
-                    var cause = causeObj?.ToString() ?? "Unknown";
-                    if (packet.Data.TryGetValue("time", out var timeObj))
-                    {
-                        var time = timeObj?.ToString() ?? "Unknown";
-                    }
-                }
-            }
-            
-            lastDeathLinkTime = now;
-            Session.Socket.SendPacket(packet);
+            _lastDeathLinkTime = now;
+            Session?.Socket.SendPacket(packet);
         }
 
         private void BouncePacketReceived(BouncePacket packet)
         {
             if (PluginMain.SlotData.DeathLink)
-                ProcessBouncePacket(packet, "DeathLink", ref lastDeath, (source, data) =>
+                ProcessBouncePacket(packet, "DeathLink", ref _lastDeath, (source, data) =>
                     HandleDeathLink(source, data["cause"]?.ToString() ?? "Unknown"));
         }
 
-        private static void ProcessBouncePacket(BouncePacket packet, string tag, ref string lastTime,
+        private static void ProcessBouncePacket(BouncePacket packet, string tag, ref string? lastTime,
             Action<string, Dictionary<string, JToken>> handler)
         {
             if (!packet.Tags.Contains(tag)) return;
@@ -342,7 +341,7 @@ namespace BitsAndBops_AP_Client
 
             handler(source, packet.Data);
         }
-        
+
         private void HandleDeathLink(string source, string cause)
         {
             if (!PluginMain.SlotData.DeathLink)
@@ -353,9 +352,9 @@ namespace BitsAndBops_AP_Client
             PluginMain.GameHandler.Kill();
         }
 
-        public ScoutedItemInfo TryScoutLocation(long locationId)
+        public ScoutedItemInfo? TryScoutLocation(long locationId)
         {
-            return Session.Locations.ScoutLocationsAsync(locationId)?.Result?.Values.First();
+            return Session?.Locations.ScoutLocationsAsync(locationId)?.Result?.Values.First();
         }
     }
 }

@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
@@ -43,14 +40,12 @@ public class APConsole : MonoBehaviour
         { "dashieswag92", "#fa3ced"}
     };
 
-    private static string
-        _fontName = "TempoCurse SDF";
+    private const string FontName = "TempoCurse SDF";
 
-    private static string _gameName = "Bits & Bops";
-    private static KeyCode _logToggleKey = KeyCode.F7; // Reassign in Create if configurable
-    private static KeyCode _historyToggleKey = KeyCode.F8; // Reassign in Create if configurable
-    private static CursorLockMode _defaultCursorMode = CursorLockMode.Locked;
-    private static bool _defaultCursorVisible = false;
+    private const KeyCode LogToggleKey = KeyCode.F7; // Reassign in Create if configurable
+    private const KeyCode HistoryToggleKey = KeyCode.F8; // Reassign in Create if configurable
+    private const CursorLockMode DefaultCursorMode = CursorLockMode.Locked;
+    private const bool DefaultCursorVisible = false;
 
     // CONSOLE PARAMS
     private const float MessageHeight = 28f;
@@ -67,9 +62,12 @@ public class APConsole : MonoBehaviour
     private const float PaddingY = 25f;
 
     private const float MessageSpacing = 6f;
+    
+    private bool _rebuildHistoryDirty;
+    private int _historyBuiltCount;
 
     // COLLECTIONS
-    private static TMP_FontAsset _font;
+    private static TMP_FontAsset? _font;
 
     private readonly ConcurrentQueue<Image> _backgroundPool = new();
 
@@ -78,52 +76,65 @@ public class APConsole : MonoBehaviour
     private readonly ConcurrentQueue<TextMeshProUGUI> _textPool = new();
     private readonly List<LogEntry> _visibleEntries = [];
     private readonly List<LogEntry> _historyEntries = [];
-    private GameObject _historyPanel;
-    private RectTransform _historyContent;
-    private bool _showHistory = false;
-    private ScrollRect _historyScrollRect;
-    private RectTransform _historyViewport;
+    private GameObject? _historyPanel;
+    private RectTransform? _historyContent;
+    private bool _showHistory;
+    private ScrollRect? _historyScrollRect;
+    private RectTransform? _historyViewport;
     
-    private Transform _messageParent;
-    private bool _isDebug = false;
+    private Transform? _messageParent;
     private bool _showConsole = true;
 
-    public static APConsole Instance { get; private set; }
-
-    public static void Create()
+    private static APConsole? _instance;
+    public static APConsole Instance
     {
-        if (Instance != null)
+        get
+        {
+            if (_instance == null)
+                Create();
+            return _instance!;
+        }
+    }
+
+    private static void Create()
+    {
+        if (_instance != null)
             return;
         PluginMain.logger.LogWarning($"{Resources.FindObjectsOfTypeAll<TMP_FontAsset>().Length} font assets exist.");
         foreach (var res in Resources.FindObjectsOfTypeAll<TMP_FontAsset>())
             PluginMain.logger.LogWarning(res.name);
-        _font = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().First(x => x.name == _fontName);
+        _font = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().First(x => x.name == FontName);
         var consoleObject = new GameObject("ArchipelagoConsoleUI");
         DontDestroyOnLoad(consoleObject);
-        Instance = consoleObject.AddComponent<APConsole>();
-        Instance.BuildUI();
-        Instance.Log($"Welcome to {_gameName} Archipelago!");
-        Instance.Log($"Client by xMcacutt, apworld by DashieSwag92");
-        Instance.Log(
-            $"Press {_logToggleKey.ToString()} to Toggle log and {_historyToggleKey.ToString()} to toggle history");
-        Instance.DebugLog("Colour Test");
+        _instance = consoleObject.AddComponent<APConsole>();
+        _instance.BuildUI();
+        _instance.Log($"Client by xMcacutt, apworld by DashieSwag92");
+        _instance.Log(
+            $"Press {LogToggleKey.ToString()} to Toggle log and {HistoryToggleKey.ToString()} to toggle history");
+        _instance.DebugLog("Colour Test");
         foreach (var word in KeywordColors.Keys)
-            Instance.DebugLog(word);
+            _instance.DebugLog(word);
     }
 
     private void Update()
     {
         UpdateMessages(Time.deltaTime);
         TryAddNewMessages();
-        if (Input.GetKeyDown(_logToggleKey))
+        if (Input.GetKeyDown(LogToggleKey))
             ToggleConsole();
-        if (Input.GetKeyDown(_historyToggleKey))
+        if (Input.GetKeyDown(HistoryToggleKey))
             ToggleHistory();
 
         if (_showHistory)
         {
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
+        }
+
+        if (_showHistory && _rebuildHistoryDirty)
+        {
+            _rebuildHistoryDirty = false;
+            RebuildHistory();
         }
         
         if (_showHistory && _historyScrollRect != null)
@@ -204,8 +215,10 @@ public class APConsole : MonoBehaviour
                 var t = Mathf.Clamp01(entry.stateTimer / FadeOutTime);
                 entry.offsetY = Mathf.Lerp(0f, FadeUpOffset, t);
                 var alpha = 1f - t;
-                entry.text.color = new Color(1f, 1f, 1f, alpha);
-                entry.background.color = new Color(0f, 0f, 0f, 0.8f * alpha);
+                if (entry.text != null) 
+                    entry.text.color = new Color(1f, 1f, 1f, alpha);
+                if (entry.background != null) 
+                    entry.background.color = new Color(0f, 0f, 0f, 0.8f * alpha);
 
                 if (t >= 1f)
                     return true;
@@ -275,7 +288,7 @@ public class APConsole : MonoBehaviour
         text.color = Color.white;
         bg.color = new Color(0, 0, 0, 0.8f);
 
-        text.text = Colorize(entry.message);
+        text.text = entry.colorizedMessage;
 
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(text.rectTransform);
@@ -318,18 +331,23 @@ public class APConsole : MonoBehaviour
 
     private void UpdateEntryVisual(LogEntry entry)
     {
-        entry.text.text = Colorize(entry.message);
+        if (entry.text != null)
+        {
+            entry.text.text = entry.colorizedMessage;
 
-        var bgRect = entry.background.rectTransform;
-        var textHeight = entry.text.preferredHeight;
-        entry.height = Mathf.Max(MessageHeight, textHeight + 8f);
-        bgRect.sizeDelta = new Vector2(bgRect.sizeDelta.x, entry.height);
+            var bgRect = entry.background?.rectTransform;
+            var textHeight = entry.text.preferredHeight;
+            entry.height = Mathf.Max(MessageHeight, textHeight + 8f);
+            if (bgRect != null) 
+                bgRect.sizeDelta = new Vector2(bgRect.sizeDelta.x, entry.height);
+        }
 
         var targetY = entry.baseY + entry.offsetY;
         entry.animatedY = Mathf.Lerp(entry.animatedY, targetY, Time.deltaTime * 12f);
 
-        entry.background.rectTransform.anchoredPosition =
-            new Vector2(0f, entry.animatedY);
+        if (entry.background != null)
+            entry.background.rectTransform.anchoredPosition =
+                new Vector2(0f, entry.animatedY);
     }
 
     private TextMeshProUGUI GetText()
@@ -370,11 +388,19 @@ public class APConsole : MonoBehaviour
 
     private void RecycleEntry(LogEntry entry)
     {
-        entry.text.gameObject.SetActive(false);
-        entry.background.gameObject.SetActive(false);
+        if (entry.text != null)
+        {
+            entry.text.gameObject.SetActive(false);
+            _textPool.Enqueue(entry.text);
+            entry.text = null;
+        }
 
-        _textPool.Enqueue(entry.text);
-        _backgroundPool.Enqueue(entry.background);
+        if (entry.background != null)
+        {
+            entry.background.gameObject.SetActive(false);
+            _backgroundPool.Enqueue(entry.background);
+            entry.background = null;
+        }
     }
 
     private string Colorize(string input)
@@ -382,7 +408,7 @@ public class APConsole : MonoBehaviour
         if (string.IsNullOrEmpty(input))
             return input;
 
-        List<string> tokens = Tokenize(input);
+        var tokens = Tokenize(input);
         ApplyMultiWordColoring(tokens);
         ApplySingleWordColoring(tokens);
         return string.Concat(tokens);
@@ -390,9 +416,7 @@ public class APConsole : MonoBehaviour
 
     private List<string> Tokenize(string input)
     {
-        if (string.IsNullOrEmpty(input))
-            return new List<string>();
-        return Regex.Split(input, @"(\s+)").ToList();
+        return string.IsNullOrEmpty(input) ? [] : Regex.Split(input, @"(\s+)").ToList();
     }
 
     private void ApplySingleWordColoring(List<string> tokens)
@@ -471,18 +495,30 @@ public class APConsole : MonoBehaviour
     public void Log(string text)
     {
         var entry = new LogEntry(text);
+        entry.colorizedMessage = Colorize(text);
+
+        if (_showHistory)
+        {
+            _historyEntries.Add(new LogEntry(text)
+            {
+                colorizedMessage = entry.colorizedMessage
+            });
+
+            _rebuildHistoryDirty = true;
+            return;
+        }
 
         _cachedEntries.Enqueue(entry);
 
-        _historyEntries.Add(entry);
-
-        if (_historyPanel != null && _historyPanel.activeSelf)
-            AddHistoryEntryVisual(entry);
+        _historyEntries.Add(new LogEntry(text)
+        {
+            colorizedMessage = entry.colorizedMessage
+        });
     }
 
     public void DebugLog(string text)
     {
-        if (!PluginMain.enableDebugLogging.Value)
+        if (PluginMain.EnableDebugLogging != null && !PluginMain.EnableDebugLogging.Value)
             return;
         Log(text);
     }
@@ -491,6 +527,9 @@ public class APConsole : MonoBehaviour
     {
         _showHistory = !_showHistory;
 
+        if (_messageParent == null || _historyPanel == null)
+            return;
+        
         _messageParent.gameObject.SetActive(!_showHistory);
 
         _historyPanel.SetActive(_showHistory);
@@ -499,11 +538,17 @@ public class APConsole : MonoBehaviour
         {
             foreach (var e in _visibleEntries)
             {
-                if (e.text != null) e.text.gameObject.SetActive(false);
-                if (e.background != null) e.background.gameObject.SetActive(false);
+                if (e.text != null)
+                {
+                    e.text.gameObject.SetActive(false);
+                    _textPool.Enqueue(e.text);
+                }
 
-                _textPool.Enqueue(e.text);
-                _backgroundPool.Enqueue(e.background);
+                if (e.background != null)
+                {
+                    e.background.gameObject.SetActive(false);
+                    _backgroundPool.Enqueue(e.background);
+                }
             }
 
             _visibleEntries.Clear();
@@ -513,8 +558,8 @@ public class APConsole : MonoBehaviour
         }
         else
         {
-            Cursor.lockState = _defaultCursorMode;
-            Cursor.visible = _defaultCursorVisible;
+            Cursor.lockState = DefaultCursorMode;
+            Cursor.visible = DefaultCursorVisible;
             _messageParent.gameObject.SetActive(_showConsole);
         }
     }
@@ -522,6 +567,8 @@ public class APConsole : MonoBehaviour
     private void ToggleConsole()
     {
         _showConsole = !_showConsole;
+        if (_messageParent == null || _historyPanel == null)
+            return;
 
         foreach (var e in _visibleEntries)
         {
@@ -628,21 +675,21 @@ public class APConsole : MonoBehaviour
 
     private void RebuildHistory()
     {
-        if (_historyContent == null)
-            return;
-        for (var i = _historyContent.childCount - 1; i >= 0; i--)
-            Destroy(_historyContent.GetChild(i).gameObject);
-        foreach (var entry in _historyEntries)
-            AddHistoryEntryVisual(entry);
-
+        if (_historyContent == null) return;
+        for (int i = _historyBuiltCount; i < _historyEntries.Count; i++)
+            AddHistoryEntryVisual(_historyEntries[i]);
+        
+        _historyBuiltCount = _historyEntries.Count;
+        
         Canvas.ForceUpdateCanvases();
         LayoutRebuilder.ForceRebuildLayoutImmediate(_historyContent);
         Canvas.ForceUpdateCanvases();
-        _historyScrollRect.verticalNormalizedPosition = 0f;
+        if (_historyScrollRect != null)
+            _historyScrollRect.verticalNormalizedPosition = 0f;
     }
 
     [Serializable]
-    public class LogEntry
+    public class LogEntry(string msg)
     {
         public enum State
         {
@@ -658,15 +705,11 @@ public class APConsole : MonoBehaviour
         public float baseY;
         public float animatedY;
 
-        public TextMeshProUGUI text;
-        public Image background;
+        public TextMeshProUGUI? text;
+        public Image? background;
 
-        public string message;
+        public string message = msg;
+        public string colorizedMessage = msg;
         public float height = MessageHeight;
-
-        public LogEntry(string msg)
-        {
-            message = msg;
-        }
     }
 }

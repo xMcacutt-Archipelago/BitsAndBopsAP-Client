@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using CollectionExtensions = System.Collections.Generic.CollectionExtensions;
 using Random = System.Random;
 
 namespace BitsAndBops_AP_Client
@@ -18,7 +16,7 @@ namespace BitsAndBops_AP_Client
         public void Kill()
         {
             PauseScript? pause = null;
-            var pauseScene = SceneManager.GetSceneByName(SceneKey.Pause.ToString());
+            var pauseScene = SceneManager.GetSceneByName(nameof(SceneKey.Pause));
             if (!pauseScene.isLoaded)
             {
                 APConsole.Instance.DebugLog("Scene not found: " + nameof(SceneKey.Pause));
@@ -35,11 +33,11 @@ namespace BitsAndBops_AP_Client
         }
         
         [HarmonyPatch(typeof(JudgementDictionary))]
-        public static class JudgementDictionary_Patch
+        public static class JudgementDictionaryPatch
         {
-            private static Random random = new Random();
-            public static double deathChance = 0;
-            public static bool troublemakerFlag = true;
+            private static Random _random = new();
+            public static double DeathChance;
+            public static bool TroublemakerFlag = true;
             
             [HarmonyPatch(nameof(JudgementDictionary.IncrementAtomic))]
             [HarmonyPostfix]
@@ -47,20 +45,19 @@ namespace BitsAndBops_AP_Client
             public static void IncrementAtomic(Judgement judgement, string type, Action action, float target)
             {
                 if (judgement is Judgement.Perfect or Judgement.Hit)
-                    troublemakerFlag = false;
-                if (troublemakerFlag)
+                    TroublemakerFlag = false;
+                if (TroublemakerFlag)
                     return;
-                if (judgement == Judgement.Miss)
+                if (judgement != Judgement.Miss) 
+                    return;
+                var rng = _random.NextDouble();
+                if (rng < DeathChance)
                 {
-                    var rng = random.NextDouble();
-                    if (rng < deathChance)
-                    {
-                        PluginMain.ArchipelagoHandler.SendDeath();
-                        deathChance = 0;
-                    }
-                    else
-                        deathChance += 0.01d;
+                    PluginMain.ArchipelagoHandler.SendDeath();
+                    DeathChance = 0;
                 }
+                else
+                    DeathChance += 0.01d;
             }
         }
 
@@ -69,81 +66,70 @@ namespace BitsAndBops_AP_Client
         {
             [HarmonyPatch(nameof(ShopScript.Start))]
             [HarmonyPostfix]
-            static void OnStart(ShopSelectScript __instance)
+            private static void OnStart(ShopSelectScript __instance)
             {
-                if (!__instance.GetCurrentCard().Selectable)
-                {
-                    if (__instance.isArcade)
-                    {
-                        __instance.SavePosition(Stage.Clock);
-                        (__instance.currentX, __instance.currentY) = __instance.LoadPosition();
-                    }
-                }
+                if (__instance.GetCurrentCard().Selectable) return;
+                if (!__instance.isArcade) return;
+                __instance.SavePosition(Stage.Clock);
+                (__instance.currentX, __instance.currentY) = __instance.LoadPosition();
             }
             
             [HarmonyPatch(nameof(ShopSelectScript.SwitchIn))]
             [HarmonyPostfix]
             public static void OnSwitchIn(ShopSelectScript __instance, int direction, bool initial = false)
             {
-                if (__instance.isArcade && __instance.GetCurrentCard().stage == Stage.Clock)
-                {
-                    __instance.cursor.SetActive(true);
-                    __instance.cursor.transform.position = __instance.GetCurrentCard().transform.position + __instance.cursorOffset;
-                    __instance.GetCurrentCard().Select();
-                }
+                if (!__instance.isArcade || __instance.GetCurrentCard().stage != Stage.Clock) return;
+                __instance.cursor.SetActive(true);
+                __instance.cursor.transform.position = __instance.GetCurrentCard().transform.position + __instance.cursorOffset;
+                __instance.GetCurrentCard().Select();
             }
             
             [HarmonyPatch(nameof(ShopSelectScript.OnDirection))]
             [HarmonyPrefix]
             static bool OnDirection(ShopSelectScript __instance, int x, int y, ref IEnumerator __result)
             {
-                if (__instance.isArcade)
-                    __result = OnDirectionMultiplayerCustom(__instance, x, y);
-                else
-                    __result = OnDirectionCustom(__instance, x, y);
+                __result = __instance.isArcade ? OnDirectionMultiplayerCustom(__instance, x, y) : OnDirectionCustom(__instance, x, y);
                 return false;
             }
 
-            static IEnumerator OnDirectionMultiplayerCustom(ShopSelectScript instance, int x, int y)
+            private static IEnumerator OnDirectionMultiplayerCustom(ShopSelectScript instance, int x, int y)
             {
                 if (!instance.acceptInput)
                     yield break;
 
-                int bestX = instance.currentX;
-                int bestY = instance.currentY;
-                float minDistance = float.MaxValue;
-                bool found = false;
+                var bestX = instance.currentX;
+                var bestY = instance.currentY;
+                var minDistance = float.MaxValue;
+                var found = false;
 
-                Vector3 currentPos = instance.GetCurrentCard().transform.position;
+                var currentPos = instance.GetCurrentCard().transform.position;
 
-                for (int cy = 0; cy < instance.maxY; cy++)
+                for (var cy = 0; cy < instance.maxY; cy++)
                 {
-                    for (int cx = 0; cx < instance.maxX; cx++)
+                    for (var cx = 0; cx < instance.maxX; cx++)
                     {
                         if (cx == instance.currentX && cy == instance.currentY)
                             continue;
 
-                        LevelCardScript card = instance.GetCard(cx, cy);
+                        var card = instance.GetCard(cx, cy);
                         
                         if (card == null || !card.gameObject.activeSelf || !card.Selectable)
                             continue;
 
-                        Vector3 targetPos = card.transform.position;
-                        Vector3 directionToTarget = targetPos - currentPos;
+                        var targetPos = card.transform.position;
+                        var directionToTarget = targetPos - currentPos;
 
-                        float dot = directionToTarget.x * x + directionToTarget.y * -y; 
+                        var dot = directionToTarget.x * x + directionToTarget.y * -y;
 
-                        if (dot > 0.1f) 
-                        {
-                            float dist = directionToTarget.sqrMagnitude;
-                            if (dist < minDistance)
-                            {
-                                minDistance = dist;
-                                bestX = cx;
-                                bestY = cy;
-                                found = true;
-                            }
-                        }
+                        if (!(dot > 0.1f)) 
+                            continue;
+                        var dist = directionToTarget.sqrMagnitude;
+                        if (!(dist < minDistance)) 
+                            continue;
+                        minDistance = dist;
+                        bestX = cx;
+                        bestY = cy;
+                        found = true;
                     }
                 }
 
@@ -257,7 +243,7 @@ namespace BitsAndBops_AP_Client
         }
 
         [HarmonyPatch(typeof(GameManager))]
-        public class GameManager_Patch
+        public class GameManagerPatch
         {
             [HarmonyTargetMethod]
             static MethodBase Target()
@@ -290,23 +276,23 @@ namespace BitsAndBops_AP_Client
             if (speedLevel == 3)
                 highScores78++;
             var log = "Goal Requirements: ";
-            if (PluginMain.SlotData.Required16RPMCompletions > highScores16)
+            if (PluginMain.SlotData.Required16RpmCompletions > highScores16)
                 shouldEnable = false;
             if (PluginMain.SlotData.RequiredLevelCompletions > highScores)
                 shouldEnable = false;
-            if (PluginMain.SlotData.Required45RPMCompletions > highScores45)
+            if (PluginMain.SlotData.Required45RpmCompletions > highScores45)
                 shouldEnable = false;
-            if (PluginMain.SlotData.Required78RPMCompletions > highScores78)
+            if (PluginMain.SlotData.Required78RpmCompletions > highScores78)
                 shouldEnable = false;
             
-            if (PluginMain.SlotData.Required16RPMCompletions > 0)
-                log += $"  {Math.Min(highScores16, PluginMain.SlotData.Required16RPMCompletions)}/{PluginMain.SlotData.Required16RPMCompletions} 16RPM  ";
+            if (PluginMain.SlotData.Required16RpmCompletions > 0)
+                log += $"  {Math.Min(highScores16, PluginMain.SlotData.Required16RpmCompletions)}/{PluginMain.SlotData.Required16RpmCompletions} 16RPM  ";
             if (PluginMain.SlotData.RequiredLevelCompletions > 0)
                 log += $"  {Math.Min(highScores, PluginMain.SlotData.RequiredLevelCompletions)}/{PluginMain.SlotData.RequiredLevelCompletions} 33RPM  ";
-            if (PluginMain.SlotData.Required45RPMCompletions > 0)
-                log += $"  {Math.Min(highScores45, PluginMain.SlotData.Required45RPMCompletions)}/{PluginMain.SlotData.Required45RPMCompletions} 45RPM  ";
-            if (PluginMain.SlotData.Required78RPMCompletions > 0)
-                log += $"  {Math.Min(highScores78, PluginMain.SlotData.Required78RPMCompletions)}/{PluginMain.SlotData.Required78RPMCompletions} 78RPM";
+            if (PluginMain.SlotData.Required45RpmCompletions > 0)
+                log += $"  {Math.Min(highScores45, PluginMain.SlotData.Required45RpmCompletions)}/{PluginMain.SlotData.Required45RpmCompletions} 45RPM  ";
+            if (PluginMain.SlotData.Required78RpmCompletions > 0)
+                log += $"  {Math.Min(highScores78, PluginMain.SlotData.Required78RpmCompletions)}/{PluginMain.SlotData.Required78RpmCompletions} 78RPM";
             
             if (!shouldEnable)
             {
@@ -322,7 +308,7 @@ namespace BitsAndBops_AP_Client
         }
 
         [HarmonyPatch(typeof(RecordPlayerScript))]
-        public class RecordPlayerScript_Patch
+        public class RecordPlayerScriptPatch
         {
             [HarmonyPatch(nameof(RecordPlayerScript.SetGlobalSpeedInternal))]
             [HarmonyPrefix]
@@ -342,7 +328,7 @@ namespace BitsAndBops_AP_Client
             {
                 Dictionary<string, Verdict> highScores = JudgementScript.GetHighScores();
                 __result = __instance.mainStageOrder.Where(x => x != Stage.Mixtape5)
-                    .Select(x => CollectionExtensions.GetValueOrDefault(highScores, x.ToString())).Min();
+                    .Select(x => highScores.GetValueOrDefault(x.ToString())).Min();
                 return false;
             }
             
@@ -350,11 +336,28 @@ namespace BitsAndBops_AP_Client
             [HarmonyPrefix]
             private static bool OnMaybeUnlockInternal(ShopScript __instance)
             {
+                // PATCH 1.6.0 INCOMING
+                // if (JudgementScript.stageCompleted &&
+                //     JudgementScript.verdict > (Verdict)PluginMain.SlotData.RequiredRank)
+                // {
+                //     __instance.counter.TryEnableGameEvent(GameEvent.StageCleared);
+                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape1))
+                //         __instance.counter.TryEnableAchievement(Achievement.JungleMixtape);
+                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape2))
+                //         __instance.counter.TryEnableAchievement(Achievement.SkyMixtape);
+                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape3))
+                //         __instance.counter.TryEnableAchievement(Achievement.OceanMixtape);
+                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape4))
+                //         __instance.counter.TryEnableAchievement(Achievement.FireMixtape);
+                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape5))
+                //         PluginMain.ArchipelagoHandler.Release();
+                // }
+
                 if (JudgementScript.stageCompleted &&
                     JudgementScript.verdict > (Verdict)PluginMain.SlotData.RequiredRank)
                 {
                     __instance.counter.TryEnableGameEvent(GameEvent.StageCleared);
-                    Stage? clearedStage = JudgementScript.clearedStage;
+                    var clearedStage = JudgementScript.clearedStage;
                     if (clearedStage.HasValue)
                     {
                         switch (clearedStage)
@@ -382,9 +385,9 @@ namespace BitsAndBops_AP_Client
         }
         
         [HarmonyPatch(typeof(ShopScript), nameof(ShopScript.Awake))]
-        public static class ShopScript_Awake_Transpiler
+        public static class ShopScriptAwakeTranspiler
         {
-            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
                 var codes = new List<CodeInstruction>(instructions);
                 for (int i = 0; i < codes.Count; i++)
@@ -405,7 +408,7 @@ namespace BitsAndBops_AP_Client
         [HarmonyPatch]
         public class PostcardJudgementCheckSendPatch
         {
-            static MethodBase TargetMethod()
+            private static MethodBase TargetMethod()
             {
                 var nestedTypes = typeof(PostcardJudgementScript)
                     .GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Instance);
@@ -418,7 +421,7 @@ namespace BitsAndBops_AP_Client
             }
             
             [HarmonyTranspiler]
-            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
                 var codes = new List<CodeInstruction>(instructions);
 
@@ -433,7 +436,7 @@ namespace BitsAndBops_AP_Client
                     .First(f => f.Name.Contains("4__this") &&
                                 f.FieldType == typeof(PostcardJudgementScript));
 
-                for (int i = 0; i < codes.Count; i++)
+                for (var i = 0; i < codes.Count; i++)
                 {
                     if (codes[i].opcode == OpCodes.Callvirt &&
                         codes[i].operand is MethodInfo mi &&
@@ -480,7 +483,7 @@ namespace BitsAndBops_AP_Client
         public class JudgementGetHighScoresPatch
         {
             [HarmonyTranspiler]
-            static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
+            private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {
                 var codes = new List<CodeInstruction>(instructions);
                 for (int i = 0; i < codes.Count; i++)
@@ -501,9 +504,9 @@ namespace BitsAndBops_AP_Client
 
 
         [HarmonyPatch]
-        public class CounterScript_Patch
+        public class CounterScriptPatch
         {
-            static MethodBase TargetMethod()
+            private static MethodBase TargetMethod()
             {
                 var nestedTypes = typeof(CounterScript).GetNestedTypes(
                     BindingFlags.NonPublic | BindingFlags.Instance

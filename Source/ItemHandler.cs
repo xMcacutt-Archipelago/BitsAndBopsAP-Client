@@ -123,7 +123,7 @@ namespace BitsAndBops_AP_Client
 
         private void ProcessItem(int index, ItemInfo item)
         {
-            var apSaveData = PluginMain.SaveDataHandler.apSaveData;
+            var apSaveData = PluginMain.SaveDataHandler.APSaveData;
             if (index < apSaveData.ItemIndex)
             {
                 APConsole.Instance.DebugLog($"Item {index} already processed (current: {apSaveData.ItemIndex})");
@@ -274,7 +274,7 @@ namespace BitsAndBops_AP_Client
                     var trinketUnlocks = available as TrinketUnlock[] ?? available.ToArray();
                     if (!trinketUnlocks.Any())
                         break;
-                    GameManager.TryEnableEvent(trinketUnlocks.OrderBy(x => PluginMain.random.Next()).First(), GameManager.TrinketUnlockEvents);
+                    GameManager.TryEnableEvent(trinketUnlocks.OrderBy(x => PluginMain.Random.Next()).First(), GameManager.TrinketUnlockEvents);
                     break;
                 case BaBItem.RandomVideotape:                   
                     var tapes = Enum.GetValues(typeof(VideoUnlock)).Cast<VideoUnlock>().ToList();
@@ -284,7 +284,7 @@ namespace BitsAndBops_AP_Client
                     var tapeUnlocks = availableTapes as VideoUnlock[] ?? availableTapes.ToArray();
                     if (!tapeUnlocks.Any())
                         break;
-                    GameManager.TryEnableEvent(tapeUnlocks.OrderBy(x => PluginMain.random.Next()).First(), GameManager.VideoUnlockEvents);
+                    GameManager.TryEnableEvent(tapeUnlocks.OrderBy(x => PluginMain.Random.Next()).First(), GameManager.VideoUnlockEvents);
                     break;
                 default:
                     Log.Warning($"Unknown item: {item.ItemId} ({item.ItemName})");

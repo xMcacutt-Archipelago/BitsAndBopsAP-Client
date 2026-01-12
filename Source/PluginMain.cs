@@ -1,9 +1,6 @@
-﻿using System;
-using System.Threading;
-using BepInEx;
+﻿using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 using Random = System.Random;
 using BepInEx.Configuration;
@@ -13,23 +10,23 @@ namespace BitsAndBops_AP_Client
     [BepInPlugin(Guid, Name, Version)]
     public class PluginMain : BaseUnityPlugin
     {
-        public static ConfigEntry<bool> enableDebugLogging;
+        public static ConfigEntry<bool>? EnableDebugLogging;
         public const string GameName = "Bits & Bops";
         private const string Guid = "bits_and_bops_ap_client";
         private const string Name = "BitsAndBopsAPClient";
-        private const string Version = "1.0.3";
-        public static ManualLogSource logger;
+        private const string Version = "1.0.4";
+        
+        public static ManualLogSource logger = null!;
         private readonly Harmony _harmony = new(Guid);
-        public static ArchipelagoHandler ArchipelagoHandler;
-        public static SaveDataHandler SaveDataHandler;
-        public static GameHandler GameHandler;
-        public static ItemHandler ItemHandler;
-        public static SlotData SlotData;
-        public static Random random;
+        public static ArchipelagoHandler ArchipelagoHandler = null!;
+        public static SaveDataHandler SaveDataHandler = null!;
+        public static GameHandler GameHandler = null!;
+        public static ItemHandler ItemHandler = null!;
+        public static SlotData SlotData = null!;
+        public static Random Random = new();
         
         private void Awake()
-        {
-            random = new Random();
+        { 
             _harmony.PatchAll();
             logger = Logger;
             SaveDataHandler = new SaveDataHandler();
@@ -42,11 +39,11 @@ namespace BitsAndBops_AP_Client
                 if (newScene.name != "StageSelectShop") 
                     return;
                 ItemHandler.FlushQueue();
-                GameHandler.JudgementDictionary_Patch.deathChance = 0;
-                GameHandler.JudgementDictionary_Patch.troublemakerFlag = true;
+                GameHandler.JudgementDictionaryPatch.DeathChance = 0;
+                GameHandler.JudgementDictionaryPatch.TroublemakerFlag = true;
             };
             
-            enableDebugLogging = Config.Bind(
+            EnableDebugLogging = Config.Bind(
                 "Logging",
                 "EnableDebugLogging",
                 false,

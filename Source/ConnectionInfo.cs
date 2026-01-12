@@ -3,38 +3,35 @@ using Newtonsoft.Json;
 
 namespace BitsAndBops_AP_Client;
 
-public class ConnectionInfo
+public class ConnectionInfo(string server, string slot, string password)
 {
-    public string Server { get; set; }
-    public ushort Port { get; set; }
-    public string Slot { get; set; }
-    public string Password { get; set; }
+    public string Server { get; set; } = server;
+    public string Slot { get; set; } = slot;
+    public string Password { get; set; } = password;
 }
 
-public class ConnectionInfoHandler
+public static class ConnectionInfoHandler
 {
-    private static readonly string path = "./ArchipelagoSaves/" + "connection_info.json";
+    private const string Path = "./ArchipelagoSaves/" + "connection_info.json";
 
-    public static void Save(string server, ushort port, string slot, string password)
+    public static void Save(string server, string slot, string password)
     {
-        var connectionInfo = new ConnectionInfo();
-        connectionInfo.Server = server;
-        connectionInfo.Port = port;
-        connectionInfo.Slot = slot;
-        connectionInfo.Password = password;
+        var connectionInfo = new ConnectionInfo(server, slot, password);
         var text = JsonConvert.SerializeObject(connectionInfo);
-        File.WriteAllText(path, text);
+        File.WriteAllText(Path, text);
     }
 
-    public static void Load(ref string server, ref ushort port, ref string slotName, ref string password)
+    public static bool Load(ref string server, ref string slotName, ref string password)
     {
-        if (!File.Exists(path))
-            Save(server, port, slotName, password);
-        var json = File.ReadAllText(path);
+        if (!File.Exists(Path))
+            Save(server, slotName, password);
+        var json = File.ReadAllText(Path);
         var connectionInfo = JsonConvert.DeserializeObject<ConnectionInfo>(json);
+        if (connectionInfo == null) 
+            return false;
         server = connectionInfo.Server;
-        port = connectionInfo.Port;
         slotName = connectionInfo.Slot;
         password = connectionInfo.Password;
+        return true;
     }
 }

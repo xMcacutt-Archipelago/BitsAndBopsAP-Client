@@ -11,25 +11,28 @@ namespace BitsAndBops_AP_Client
     
     public class SaveDataHandler
     {
-        public CustomSaveData apSaveData;
-        private string saveDataPath;
-        private string customDataPath;
-        private string tmpPath;
-        private string bakPath;
+        public CustomSaveData APSaveData = null!;
+        private string _saveDataPath = "";
+        private string _customDataPath = "";
+        private string _tmpPath = "";
+        private string _bakPath = "";
         
         public void GetSave(string seed, string slot)
         {
-            saveDataPath = $"./ArchipelagoSaves/{slot}_{seed}.dat";
-            tmpPath = $"./ArchipelagoSaves/{slot}_{seed}.tmp";
-            bakPath = $"./ArchipelagoSaves/{slot}_{seed}.bak";
-            customDataPath = $"./ArchipelagoSaves/{slot}_{seed}.json";
-            if (File.Exists(customDataPath))
-                apSaveData = JsonConvert.DeserializeObject<CustomSaveData>(File.ReadAllText(customDataPath));
+            _saveDataPath = $"./ArchipelagoSaves/{slot}_{seed}.dat";
+            _tmpPath = $"./ArchipelagoSaves/{slot}_{seed}.tmp";
+            _bakPath = $"./ArchipelagoSaves/{slot}_{seed}.bak";
+            _customDataPath = $"./ArchipelagoSaves/{slot}_{seed}.json";
+            if (File.Exists(_customDataPath))
+            {
+                var data = JsonConvert.DeserializeObject<CustomSaveData>(File.ReadAllText(_customDataPath));
+                APSaveData = data ?? new CustomSaveData();
+            }
             else
-                apSaveData = new CustomSaveData();
-            SaveDataManager.Instance.savePath = saveDataPath;
-            SaveDataManager.Instance.bakPath = bakPath;
-            SaveDataManager.Instance.tmpPath = tmpPath;
+                APSaveData = new CustomSaveData();
+            SaveDataManager.Instance.savePath = _saveDataPath;
+            SaveDataManager.Instance.bakPath = _bakPath;
+            SaveDataManager.Instance.tmpPath = _tmpPath;
             SaveDataManager.Instance.Load();
             SaveDataManager.saveData.shopBestOverride = true;
             SaveDataManager.saveData.gameEvents[GameEvent.MultiplayerOpen] = EventState.Complete;
@@ -40,12 +43,12 @@ namespace BitsAndBops_AP_Client
         
         public void SaveGame()
         {
-            if (saveDataPath == "" || customDataPath == "")
+            if (_saveDataPath == "" || _customDataPath == "")
             {
-                APConsole.Instance.DebugLog($"Failed to save game! SaveDataPath: {saveDataPath}, CustomDataPath: {customDataPath}");
+                APConsole.Instance.DebugLog($"Failed to save game! SaveDataPath: {_saveDataPath}, CustomDataPath: {_customDataPath}");
                 return;
             }
-            File.WriteAllText(customDataPath, JsonConvert.SerializeObject(apSaveData));
+            File.WriteAllText(_customDataPath, JsonConvert.SerializeObject(APSaveData));
             SaveDataManager.Instance.Save();
         }
         

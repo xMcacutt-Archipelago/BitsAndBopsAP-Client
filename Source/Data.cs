@@ -2,9 +2,9 @@
 
 namespace BitsAndBops_AP_Client;
 
-public class Data
+public static class Data
 {
-    public static Dictionary<Stage, int> StageToId = new()
+    public static readonly Dictionary<Stage, int> StageToId = new()
     {
         {Stage.FlipperSnapper, 0},
         {Stage.SweetTooth, 1},
@@ -28,7 +28,7 @@ public class Data
         {Stage.Mixtape4, 19},
     };
 
-    public static Dictionary<float, int> SpeedToId = new()
+    public static readonly Dictionary<float, int> SpeedToId = new()
     {
         { RecordPlayerScript.speed33, 0 },
         { RecordPlayerScript.speed16, 1 },
