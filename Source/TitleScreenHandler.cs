@@ -56,9 +56,5 @@ namespace BitsAndBops_AP_Client
                     yield return __instance.Play(SceneKey.StageSelect);
             }
         }
-        
-        
-
-
     }
 }

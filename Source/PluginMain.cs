@@ -14,7 +14,7 @@ namespace BitsAndBops_AP_Client
         public const string GameName = "Bits & Bops";
         private const string Guid = "bits_and_bops_ap_client";
         private const string Name = "BitsAndBopsAPClient";
-        private const string Version = "1.0.4";
+        private const string Version = "1.0.5";
         
         public static ManualLogSource logger = null!;
         private readonly Harmony _harmony = new(Guid);

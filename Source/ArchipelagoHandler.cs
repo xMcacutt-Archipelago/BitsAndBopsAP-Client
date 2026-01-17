@@ -97,7 +97,7 @@ namespace BitsAndBops_AP_Client
         {
             APConsole.Instance.Log($"Logging in to {Server} as {Slot}...");
             _seed = Session?.ConnectAsync()?.Result?.SeedName;
-
+            
             var result = Session?.LoginAsync(
                 PluginMain.GameName,
                 Slot,

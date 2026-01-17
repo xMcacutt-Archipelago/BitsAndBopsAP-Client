@@ -53,9 +53,27 @@
         </Reference>
     </ItemGroup>
 
+    <ItemGroup>
+        <BaBDependencies Include="$(NuGetPackageRoot)archipelago.multiclient.net\6.7.0\lib\netstandard2.0\Archipelago.MultiClient.Net.dll" />
+        <BaBDependencies Include="$(NuGetPackageRoot)archipelago.multiclient.net\6.7.0\lib\netstandard2.0\Newtonsoft.Json.dll"/>
+    </ItemGroup>
+
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+        <MakeDir Directories="$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\BepInEx\plugins\BitsAndBopsAPClient"/>
+        <MakeDir Directories="$(ProjectDir)output" />
+
         <Copy
                 SourceFiles="$(TargetPath)"
-                DestinationFiles="$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\BepInEx\plugins\BitsAndBopsAPClient\$(TargetFileName)"/>
+                DestinationFolder="$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\BepInEx\plugins\BitsAndBopsAPClient"
+                OverwriteReadOnlyFiles="true"
+        />
+
+        <Copy
+                SourceFiles="@(BaBDependencies)"
+                DestinationFolder="$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\BepInEx\plugins\BitsAndBopsAPClient"
+                OverwriteReadOnlyFiles="true"
+        />
+
+        <Exec Command="powershell -Command &quot;Compress-Archive -Path '$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\BepInEx\plugins\BitsAndBopsAPClient\*' -DestinationPath '$(ProjectDir)output\BitsAndBopsAPClient.zip' -Force&quot;" />
     </Target>
 </Project>

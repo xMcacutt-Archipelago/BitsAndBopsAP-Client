@@ -336,49 +336,20 @@ namespace BitsAndBops_AP_Client
             [HarmonyPrefix]
             private static bool OnMaybeUnlockInternal(ShopScript __instance)
             {
-                // PATCH 1.6.0 INCOMING
-                // if (JudgementScript.stageCompleted &&
-                //     JudgementScript.verdict > (Verdict)PluginMain.SlotData.RequiredRank)
-                // {
-                //     __instance.counter.TryEnableGameEvent(GameEvent.StageCleared);
-                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape1))
-                //         __instance.counter.TryEnableAchievement(Achievement.JungleMixtape);
-                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape2))
-                //         __instance.counter.TryEnableAchievement(Achievement.SkyMixtape);
-                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape3))
-                //         __instance.counter.TryEnableAchievement(Achievement.OceanMixtape);
-                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape4))
-                //         __instance.counter.TryEnableAchievement(Achievement.FireMixtape);
-                //     if (__instance.HasClearedOrSkipped(Stage.Mixtape5))
-                //         PluginMain.ArchipelagoHandler.Release();
-                // }
-
                 if (JudgementScript.stageCompleted &&
                     JudgementScript.verdict > (Verdict)PluginMain.SlotData.RequiredRank)
                 {
                     __instance.counter.TryEnableGameEvent(GameEvent.StageCleared);
-                    var clearedStage = JudgementScript.clearedStage;
-                    if (clearedStage.HasValue)
-                    {
-                        switch (clearedStage)
-                        {
-                            case Stage.Mixtape1:
-                                __instance.counter.TryEnableAchievement(Achievement.JungleMixtape);
-                                break;
-                            case Stage.Mixtape2:
-                                __instance.counter.TryEnableAchievement(Achievement.SkyMixtape);
-                                break;
-                            case Stage.Mixtape3:
-                                __instance.counter.TryEnableAchievement(Achievement.OceanMixtape);
-                                break;
-                            case Stage.Mixtape4:
-                                __instance.counter.TryEnableAchievement(Achievement.FireMixtape);
-                                break;
-                            case Stage.Mixtape5:
-                                PluginMain.ArchipelagoHandler.Release();
-                                break;
-                        }
-                    }
+                    if (__instance.HasClearedOrSkipped(Stage.Mixtape1))
+                        __instance.counter.TryEnableAchievement(Achievement.JungleMixtape);
+                    if (__instance.HasClearedOrSkipped(Stage.Mixtape2))
+                        __instance.counter.TryEnableAchievement(Achievement.SkyMixtape);
+                    if (__instance.HasClearedOrSkipped(Stage.Mixtape3))
+                        __instance.counter.TryEnableAchievement(Achievement.OceanMixtape);
+                    if (__instance.HasClearedOrSkipped(Stage.Mixtape4))
+                        __instance.counter.TryEnableAchievement(Achievement.FireMixtape);
+                    if (__instance.HasClearedOrSkipped(Stage.Mixtape5))
+                        PluginMain.ArchipelagoHandler.Release();
                 }
                 return false;
             }
