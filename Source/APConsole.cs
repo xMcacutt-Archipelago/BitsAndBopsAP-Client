@@ -51,9 +51,9 @@ public class APConsole : MonoBehaviour
     private const float MessageHeight = 28f;
     private const float ConsoleHeight = 280f;
 
-    private const float SlideInTime = 0.25f;
-    private const float HoldTime = 3.0f;
-    private const float FadeOutTime = 0.5f;
+    private float _slideInTime = 0.25f;
+    private float _holdTime = 3.0f;
+    private float _fadeOutTime = 0.5f;
 
     private const float SlideInOffset = -50f;
     private const float FadeUpOffset = 20f;
@@ -108,6 +108,12 @@ public class APConsole : MonoBehaviour
         DontDestroyOnLoad(consoleObject);
         _instance = consoleObject.AddComponent<APConsole>();
         _instance.BuildUI();
+        if (PluginMain.MessageInTime != null)
+            _instance._slideInTime = PluginMain.MessageInTime.Value;
+        if (PluginMain.MessageHoldTime != null)
+            _instance._holdTime = PluginMain.MessageHoldTime.Value;
+        if (PluginMain.MessageOutTime != null)
+            _instance._fadeOutTime = PluginMain.MessageOutTime.Value;
         _instance.Log($"Client by xMcacutt, apworld by DashieSwag92");
         _instance.Log(
             $"Press {LogToggleKey.ToString()} to Toggle log and {HistoryToggleKey.ToString()} to toggle history");
@@ -188,7 +194,7 @@ public class APConsole : MonoBehaviour
         {
             case LogEntry.State.SlideIn:
             {
-                var t = Mathf.Clamp01(entry.stateTimer / SlideInTime);
+                var t = Mathf.Clamp01(entry.stateTimer / _slideInTime);
                 entry.offsetY = Mathf.Lerp(SlideInOffset, 0f, EaseOutQuad(t));
 
                 if (t >= 1f)
@@ -202,7 +208,7 @@ public class APConsole : MonoBehaviour
             case LogEntry.State.Hold:
             {
                 entry.offsetY = 0f;
-                if (entry.stateTimer >= HoldTime)
+                if (entry.stateTimer >= _holdTime)
                 {
                     entry.state = LogEntry.State.FadeOut;
                     entry.stateTimer = 0f;
@@ -212,7 +218,7 @@ public class APConsole : MonoBehaviour
 
             case LogEntry.State.FadeOut:
             {
-                var t = Mathf.Clamp01(entry.stateTimer / FadeOutTime);
+                var t = Mathf.Clamp01(entry.stateTimer / _fadeOutTime);
                 entry.offsetY = Mathf.Lerp(0f, FadeUpOffset, t);
                 var alpha = 1f - t;
                 if (entry.text != null) 

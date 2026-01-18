@@ -11,10 +11,14 @@ namespace BitsAndBops_AP_Client
     public class PluginMain : BaseUnityPlugin
     {
         public static ConfigEntry<bool>? EnableDebugLogging;
+        public static ConfigEntry<bool>? FilterLog;
+        public static ConfigEntry<float>? MessageInTime;
+        public static ConfigEntry<float>? MessageHoldTime;
+        public static ConfigEntry<float>? MessageOutTime;
         public const string GameName = "Bits & Bops";
         private const string Guid = "bits_and_bops_ap_client";
         private const string Name = "BitsAndBopsAPClient";
-        private const string Version = "1.0.5";
+        private const string Version = "1.0.6";
         
         public static ManualLogSource logger = null!;
         private readonly Harmony _harmony = new(Guid);
@@ -49,8 +53,34 @@ namespace BitsAndBops_AP_Client
                 false,
                 "Enables or disables debug logging in the Archipelago Console."
             );
+            
+            FilterLog = Config.Bind(
+                "Logging",
+                "FilterLog",
+                false,
+                "Filter the archipelago log to only show messages relevant to you."
+            );
+            
+            MessageInTime = Config.Bind(
+                "Logging",
+                "MessageInTime",
+                    0.25f,
+                "How long messages take to animate in."
+            );
+            
+            MessageHoldTime = Config.Bind(
+                "Logging",
+                "MessageHoldTime",
+                3f,
+                "How long messages stay in the log before animating out."
+            );
+            
+            MessageOutTime = Config.Bind(
+                "Logging",
+                "MessageOutTime",
+                0.5f,
+                "How long messages stay in the log before animating out."
+            );
         }
-
-    
     }
 }

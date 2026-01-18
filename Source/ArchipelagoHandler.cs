@@ -261,6 +261,10 @@ namespace BitsAndBops_AP_Client
         private void OnMessageReceived(LogMessage message)
         {
             string messageStr;
+            if (PluginMain.FilterLog != null && 
+                PluginMain.FilterLog.Value && 
+                !message.Parts.Any(x => x.Text.Contains(Session!.Players.GetPlayerName(Session.ConnectionInfo.Slot))))
+                return;
             if (message.Parts.Length == 1)
             {
                 messageStr = message.Parts[0].Text;
@@ -270,7 +274,7 @@ namespace BitsAndBops_AP_Client
                 var builder = new StringBuilder();
                 foreach (var part in message.Parts)
                 {
-                    string hexColor = GetColorHex(part.PaletteColor);
+                    var hexColor = GetColorHex(part.PaletteColor);
                     builder.Append($"<color={hexColor}>{part.Text}</color>");
                 }
 
