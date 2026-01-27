@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using Archipelago.MultiClient.Net.Colors;
 using Archipelago.MultiClient.Net.Converters;
+using Archipelago.MultiClient.Net.MessageLog.Parts;
 using Archipelago.MultiClient.Net.Models;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
@@ -261,7 +262,8 @@ namespace BitsAndBops_AP_Client
         private void OnMessageReceived(LogMessage message)
         {
             string messageStr;
-            if (PluginMain.FilterLog != null && 
+            if (message.Parts.Any(x => x.Type == MessagePartType.Player) &&
+                PluginMain.FilterLog != null && 
                 PluginMain.FilterLog.Value && 
                 !message.Parts.Any(x => x.Text.Contains(Session!.Players.GetPlayerName(Session.ConnectionInfo.Slot))))
                 return;

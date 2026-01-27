@@ -23,6 +23,9 @@
         <Reference Include="Assembly-CSharp">
             <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\Assembly-CSharp.dll</HintPath>
         </Reference>
+        <Reference Include="com.rlabrecque.steamworks.net">
+          <HintPath>F:\SteamLibrary\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\com.rlabrecque.steamworks.net.dll</HintPath>
+        </Reference>
         <Reference Include="UnityEngine">
             <HintPath>$(STEAM_PATH)\steamapps\common\Bits &amp; Bops\Bits &amp; Bops_Data\Managed\UnityEngine.dll</HintPath>
         </Reference>

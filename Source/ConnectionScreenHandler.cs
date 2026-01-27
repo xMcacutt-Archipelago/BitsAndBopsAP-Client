@@ -1,16 +1,37 @@
 ﻿using System;
 using System.Collections;
 using HarmonyLib;
+using PantryParadeAnimationStates;
 using SettingsAnimationStates;
+using Steamworks;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace BitsAndBops_AP_Client
 {
     public static class ConnectionScreenHandler
     {
+        public static Callback<GamepadTextInputDismissed_t>? OnKeyboardDismissed;
+        private static int _activeSelection = -1;
         [HarmonyPatch(typeof(FileSelectScript))]
-        private static class FileSelectScriptPatch
+        public static class FileSelectScriptPatch
         {
+            public static void KeyboardDismissed(GamepadTextInputDismissed_t gamepadTextInputDismissedT)
+            {
+                switch (_activeSelection)
+                {
+                    case 0:
+                        SteamUtils.GetEnteredGamepadTextInput(out _apIP, SteamUtils.GetEnteredGamepadTextLength());
+                        break;
+                    case 1:
+                        SteamUtils.GetEnteredGamepadTextInput(out _apSlot, SteamUtils.GetEnteredGamepadTextLength());
+                        break;
+                    case 2:
+                        SteamUtils.GetEnteredGamepadTextInput(out _apPass, SteamUtils.GetEnteredGamepadTextLength());
+                        break;
+                }
+            }
+            
             [HarmonyPatch(nameof(FileSelectScript.Open))]
             [HarmonyPrefix]
             public static bool Open_Prefix(FileSelectScript __instance, ref IEnumerator __result)
@@ -18,7 +39,7 @@ namespace BitsAndBops_AP_Client
                 __result = CustomOpen(__instance);
                 return false;
             }
-
+            
             private static string _apIP = "archipelago.gg:38281";
             private static string _apSlot = "Player1";
             private static string _apPass = "";
@@ -71,6 +92,7 @@ namespace BitsAndBops_AP_Client
             private static IEnumerator CustomOpen(FileSelectScript __instance)
             {
                 APConsole.Instance.Log($"Welcome to Bits & Bops Archipelago!");
+                OnKeyboardDismissed = Callback<GamepadTextInputDismissed_t>.Create(KeyboardDismissed);
                 ConnectionInfoHandler.Load(ref _apIP, ref _apSlot, ref _apPass);
                 __instance.boardDown.Play();
                 __instance.board.SetState(Board.Enter);
@@ -106,65 +128,96 @@ namespace BitsAndBops_AP_Client
                     for (int i = 0; i < 4; i++)
                         __instance.options[i].color =
                             (selection == i) ? __instance.highlightColor : __instance.defaultColors[i];
-                    
-                    if (Input.GetKeyDown(KeyCode.DownArrow))
-                    {
-                        selection = (selection + 1) % 4;
-                        __instance.moveSound.Play();
-                    }
 
-                    if (Input.GetKeyDown(KeyCode.UpArrow))
+                    if (TempoInput.Controller)
                     {
-                        selection = (selection + 3) % 4;
-                        __instance.moveSound.Play();
-                    }
-                    
-                    if (selection < 3)
-                    {
-                        if (TempoInput.GetKey(TempoInput.VK_BACK))
+                        if (TempoInput.GetActionDown(Action.Down))
                         {
-                            _backspaceTimer -= Time.deltaTime;
-                            if (TempoInput.GetKeyDown(TempoInput.VK_BACK) || _backspaceTimer <= 0)
-                            {
-                                if (selection == 0 && _apIP.Length > 0) 
-                                    _apIP = _apIP.Substring(0, _apIP.Length - 1);
-                                else if (selection == 1 && _apSlot.Length > 0) 
-                                    _apSlot = _apSlot.Substring(0, _apSlot.Length - 1);
-                                else if (selection == 2 && _apPass.Length > 0) 
-                                    _apPass = _apPass.Substring(0, _apPass.Length - 1);
-            
-                                __instance.moveSound.Play();
-                                _backspaceTimer = TempoInput.GetKeyDown(TempoInput.VK_BACK) ? InitialDelay : RepeatRate;
-                            }
+                            selection = (selection + 1) % 4;
+                            __instance.moveSound.Play();
                         }
-                        else
+
+                        if (TempoInput.GetActionDown(Action.Up))
                         {
-                            _backspaceTimer = 0f; // Reset when not holding
+                            selection = (selection + 3) % 4;
+                            __instance.moveSound.Play();
                         }
                         
-                        if (TempoInput.GetKeyDown(out uint vkey))
+                        if (TempoInput.GetActionDown(Action.Confirm) && selection < 3)
                         {
-                            if (vkey != TempoInput.VK_BACK)
+                            _activeSelection = selection;
+                            SteamUtils.ShowFloatingGamepadTextInput(
+                                EFloatingGamepadTextInputMode.k_EFloatingGamepadTextInputModeModeSingleLine,
+                                0, 0, 100, 100
+                            );
+                        }
+                    }
+                    else
+                    {
+                        if (Input.GetKeyDown(KeyCode.DownArrow))
+                        {
+                            selection = (selection + 1) % 4;
+                            __instance.moveSound.Play();
+                        }
+                        
+                        if (Input.GetKeyDown(KeyCode.UpArrow))
+                        {
+                            selection = (selection + 3) % 4;
+                            __instance.moveSound.Play();
+                        }
+                        
+                        if (selection < 3)
+                        {
+                            if (TempoInput.GetKey(TempoInput.VK_BACK))
                             {
-                                bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            
-                                if (vkey == TempoInput.VK_RETURN)
+                                _backspaceTimer -= Time.deltaTime;
+                                if (TempoInput.GetKeyDown(TempoInput.VK_BACK) || _backspaceTimer <= 0)
                                 {
-                                    selection = (selection + 1) % 4;
-                                    __instance.confirmSound.Play();
-                                }
-                                else
-                                {
-                                    char c = VKeyToChar(vkey, isShiftHeld);
-                                    if (c != '\0')
+                                    switch (selection)
                                     {
-                                        if (selection == 0) _apIP += c;
-                                        else if (selection == 1) _apSlot += c;
-                                        else if (selection == 2) _apPass += c;
+                                        case 0 when _apIP.Length > 0:
+                                            _apIP = _apIP[..^1];
+                                            break;
+                                        case 1 when _apSlot.Length > 0:
+                                            _apSlot = _apSlot[..^1];
+                                            break;
+                                        case 2 when _apPass.Length > 0:
+                                            _apPass = _apPass[..^1];
+                                            break;
                                     }
+                                    __instance.moveSound.Play();
+                                    _backspaceTimer = TempoInput.GetKeyDown(TempoInput.VK_BACK) ? InitialDelay : RepeatRate;
                                 }
                             }
-                            TempoInput.DropKeyDown(vkey);
+                            else
+                            {
+                                _backspaceTimer = 0f; // Reset when not holding
+                            }
+                            
+                            if (TempoInput.GetKeyDown(out uint vkey))
+                            {
+                                if (vkey != TempoInput.VK_BACK)
+                                {
+                                    bool isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                
+                                    if (vkey == TempoInput.VK_RETURN)
+                                    {
+                                        selection = (selection + 1) % 4;
+                                        __instance.confirmSound.Play();
+                                    }
+                                    else
+                                    {
+                                        char c = VKeyToChar(vkey, isShiftHeld);
+                                        if (c != '\0')
+                                        {
+                                            if (selection == 0) _apIP += c;
+                                            else if (selection == 1) _apSlot += c;
+                                            else if (selection == 2) _apPass += c;
+                                        }
+                                    }
+                                }
+                                TempoInput.DropKeyDown(vkey);
+                            }
                         }
                     }
 
