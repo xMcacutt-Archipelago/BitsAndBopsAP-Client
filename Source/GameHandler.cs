@@ -260,20 +260,21 @@ namespace BitsAndBops_AP_Client
             }
         }
 
-        public static void CheckGoal(int speedLevel = -1)
+        public static void CheckGoal(int? locId = null, int speedLevel = -1)
         {
+            var hasFinishedAlready = locId != null && PluginMain.ArchipelagoHandler.IsLocationChecked((int)locId);
             var shouldEnable = true;
             var highScores16 = PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x101, 0x14E, 0x4);
-            if (speedLevel == 1)
+            if (speedLevel == 1 && !hasFinishedAlready)
                 highScores16++;
             var highScores = PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x100, 0x14D, 0x4);
-            if (speedLevel == 0)
+            if (speedLevel == 0 && !hasFinishedAlready)
                 highScores++;
             var highScores45 = PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x102, 0x14F, 0x4);
-            if (speedLevel == 2)
+            if (speedLevel == 2 && !hasFinishedAlready)
                 highScores45++;
             var highScores78 =  PluginMain.ArchipelagoHandler.CountLocationsCheckedInRange(0x103, 0x150, 0x4);
-            if (speedLevel == 3)
+            if (speedLevel == 3 && !hasFinishedAlready)
                 highScores78++;
             var log = "Goal Requirements: ";
             if (PluginMain.SlotData.Required16RpmCompletions > highScores16)
@@ -299,12 +300,11 @@ namespace BitsAndBops_AP_Client
                 APConsole.Instance.Log(log);
                 return;
             }
-            
-            if (!GameManager.UnlockEvents.TryGetValue(Stage.Mixtape5, out var mix5) || mix5 != EventState.Complete)
-            {
-                GameManager.UnlockEvents[Stage.Mixtape5] = EventState.Available;
-                APConsole.Instance.Log("The Final Mixtape is Available...");
-            }
+
+            if (GameManager.UnlockEvents.TryGetValue(Stage.Mixtape5, out var mix5) &&
+                mix5 == EventState.Complete) return;
+            GameManager.UnlockEvents[Stage.Mixtape5] = EventState.Available;
+            APConsole.Instance.Log("The Final Mixtape is Available...");
         }
 
         [HarmonyPatch(typeof(RecordPlayerScript))]
@@ -327,7 +327,7 @@ namespace BitsAndBops_AP_Client
             public static bool GetLowestVerdict(ShopScript __instance, ref Verdict __result)
             {
                 Dictionary<string, Verdict> highScores = JudgementScript.GetHighScores();
-                __result = __instance.mainStageOrder.Where(x => x != Stage.Mixtape5)
+                __result = ShopScript.mainStageOrder.Where(x => x != Stage.Mixtape5)
                     .Select(x => highScores.GetValueOrDefault(x.ToString())).Min();
                 return false;
             }
@@ -445,7 +445,7 @@ namespace BitsAndBops_AP_Client
                 var speedLevel = Data.SpeedToId[RecordPlayerScript.GlobalSpeed];
                 var locId = Data.StageToId[instance.stage];
                 PluginMain.ArchipelagoHandler.CheckLocation(0x100 + locId * 4 + speedLevel);
-                CheckGoal(speedLevel);
+                CheckGoal(0x100 + locId * 4 + speedLevel, speedLevel);
             }
         }
         

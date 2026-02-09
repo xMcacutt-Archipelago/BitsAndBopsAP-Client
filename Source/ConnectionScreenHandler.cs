@@ -16,18 +16,28 @@ namespace BitsAndBops_AP_Client
         [HarmonyPatch(typeof(FileSelectScript))]
         public static class FileSelectScriptPatch
         {
-            public static void KeyboardDismissed(GamepadTextInputDismissed_t gamepadTextInputDismissedT)
+            public static void KeyboardDismissed(GamepadTextInputDismissed_t data)
             {
+                if (!data.m_bSubmitted)
+                    return;
+
+                uint length = SteamUtils.GetEnteredGamepadTextLength();
+                if (length == 0)
+                    return;
+
+                string buffer;
+                SteamUtils.GetEnteredGamepadTextInput(out buffer, length);
+
                 switch (_activeSelection)
                 {
                     case 0:
-                        SteamUtils.GetEnteredGamepadTextInput(out _apIP, SteamUtils.GetEnteredGamepadTextLength());
+                        _apIP = buffer;
                         break;
                     case 1:
-                        SteamUtils.GetEnteredGamepadTextInput(out _apSlot, SteamUtils.GetEnteredGamepadTextLength());
+                        _apSlot = buffer;
                         break;
                     case 2:
-                        SteamUtils.GetEnteredGamepadTextInput(out _apPass, SteamUtils.GetEnteredGamepadTextLength());
+                        _apPass = buffer;
                         break;
                 }
             }
@@ -129,7 +139,7 @@ namespace BitsAndBops_AP_Client
                         __instance.options[i].color =
                             (selection == i) ? __instance.highlightColor : __instance.defaultColors[i];
 
-                    if (TempoInput.Controller)
+                    if (SteamUtils.IsSteamRunningOnSteamDeck())
                     {
                         if (TempoInput.GetActionDown(Action.Down))
                         {
