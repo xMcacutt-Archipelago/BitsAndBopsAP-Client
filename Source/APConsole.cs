@@ -524,7 +524,7 @@ public class APConsole : MonoBehaviour
 
     public void DebugLog(string text)
     {
-        if (PluginMain.EnableDebugLogging != null && !PluginMain.EnableDebugLogging.Value)
+        if (PluginMain.EnableDebugLogging == null || !PluginMain.EnableDebugLogging.Value)
             return;
         Log(text);
     }

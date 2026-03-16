@@ -94,6 +94,17 @@ namespace BitsAndBops_AP_Client
             Session.Items.ItemReceived += ItemReceived;
         }
 
+        private void OnDestroy()
+        {
+            if (Session == null)
+                return;
+            Session.MessageLog.OnMessageReceived -= OnMessageReceived;
+            Session.Socket.ErrorReceived -= OnError;
+            Session.Socket.SocketClosed -= OnSocketClosed;
+            Session.Socket.PacketReceived -= PacketReceived;
+            Session.Items.ItemReceived -= ItemReceived;
+        }
+
         public void Connect()
         {
             APConsole.Instance.Log($"Logging in to {Server} as {Slot}...");
